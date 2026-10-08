@@ -54,7 +54,7 @@ module "app" {
 | ---- | ----------- | ---- | ------- | :------: |
 | environment | Environment name (dev, stage, prod). Used in resource names and decides the domain rule. | `string` | n/a | yes |
 | alarm\_email | Email address for alarms. Empty creates no subscription. | `string` | `""` | no |
-| api\_health\_path | Health path of the API target group. /api/health/ready (database and Redis) takes an unready task out of the load balancer, but ECS also replaces tasks the load balancer reports unhealthy, so a database or Redis outage makes ECS restart every API task. /api/health/live avoids that. | `string` | `"/api/health/ready"` | no |
+| api\_health\_path | Health path of the API target group. /api/health/live (default) does not touch dependencies, so a database or Redis outage does not make ECS restart API tasks. /api/health/ready (database and Redis) takes an unready task out of the load balancer, but ECS also replaces tasks the load balancer reports unhealthy, so an outage makes ECS restart every API task. | `string` | `"/api/health/live"` | no |
 | api\_sizing | API task CPU units, memory MiB and task count. | <pre>object({<br/>    cpu    = number<br/>    memory = number<br/>    count  = number<br/>  })</pre> | <pre>{<br/>  "count": 1,<br/>  "cpu": 256,<br/>  "memory": 512<br/>}</pre> | no |
 | credentials\_version | Raise to rotate the database password and the Redis AUTH token. | `number` | `1` | no |
 | deletion\_protection | Protect the database and the load balancer from deletion (and take a final database snapshot). | `bool` | `false` | no |

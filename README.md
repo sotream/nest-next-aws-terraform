@@ -180,8 +180,9 @@ What was **not** verified. Everything below was developed without an AWS account
 - **Deploy roles are not tied to `main` by IAM**: the GitHub Environments must restrict deployment branches
   (documented, not enforceable from Terraform), and the three roles can affect each other's resources in the
   shared account.
-- **The API health check** uses `/api/health/ready` by default, which can make ECS restart API tasks during a
-  database or Redis outage (`api_health_path` switches it).
+- **The API health check** uses `/api/health/live` by default, so the load balancer keeps routing to tasks
+  while the database or Redis is down (requests then fail in the app). `/api/health/ready` takes unready tasks
+  out of rotation but can make ECS restart every API task during an outage (`api_health_path` switches it).
 - **Rotating credentials needs a restart** (`force_restart` on the deploy workflow); no automatic rotation.
 - **Cost figures are estimates** from public on-demand prices, not billing data or a live price lookup.
 - **Security scanning:** checkov 3.3.26 was run locally with no failed checks and 37 skips, each with a

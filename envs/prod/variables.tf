@@ -105,9 +105,9 @@ variable "final_snapshot_on_destroy" {
 }
 
 variable "api_health_path" {
-  description = "API target group health path: /api/health/ready (default) or /api/health/live. See docs/guides/environments.md."
+  description = "API target group health path: /api/health/live (default) or /api/health/ready. See docs/guides/environments.md."
   type        = string
-  default     = "/api/health/ready"
+  default     = "/api/health/live"
 }
 
 variable "log_retention_days" {

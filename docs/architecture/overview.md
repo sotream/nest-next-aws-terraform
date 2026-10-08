@@ -46,17 +46,17 @@ flowchart LR
    with an ACM certificate and port 80 redirects to 443. Without a domain (dev only) it is
    `http://<alb dns name>`.
 2. The listener rule sends `/api/*` to the `api` target group and everything else to the `web` target group.
-3. Targets are Fargate task IPs. The API target group checks `/api/health/ready` (database and Redis); the
+3. Targets are Fargate task IPs. The API target group checks `/api/health/live` (no dependencies, see below); the
    web target group checks `/sign-in`.
 4. The API talks to RDS on 5432 and Redis on 6379 over TLS (`rediss://`, and `sslmode=no-verify` for
    PostgreSQL, see [ADR 0008](../adr/0008-database-tls.md)).
 
-The API container's own health check is `/api/health/live`, which does not touch dependencies. The target group
-uses `/api/health/ready` by default, as the starter recommends for routing decisions. **Caveat:** ECS also
-replaces tasks that the load balancer reports unhealthy, so a database or Redis outage can make ECS stop and
-restart every API task in a loop, which the starter's `live`/`ready` split is meant to avoid. If that matters,
-set `api_health_path = "/api/health/live"` (the load balancer then keeps routing to tasks whose dependencies
-are down). If every target is unhealthy the ALB routes to all of them anyway (fail-open). The starter's rate
+The API container's own health check and, by default, the target group both use `/api/health/live`, which does
+not touch dependencies. That keeps a database or Redis outage from turning into a restart loop: ECS also
+replaces tasks that the load balancer reports unhealthy, so with `api_health_path = "/api/health/ready"` an
+outage makes ECS stop and restart every API task, which the starter's `live`/`ready` split is meant to avoid.
+The trade-off of `live` is that the load balancer keeps routing to tasks whose dependencies are down, so
+requests fail inside the app instead of being taken out of rotation. If every target is unhealthy the ALB routes to all of them anyway (fail-open). The starter's rate
 limiting also fails open ([starter ADR 0008](https://github.com/sotream/nest-next-starter/blob/main/docs/adr/0008-throttler-redis-fail-open.md)).
 
 ## Network layout

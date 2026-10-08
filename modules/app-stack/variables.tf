@@ -109,9 +109,9 @@ variable "final_snapshot_on_destroy" {
 }
 
 variable "api_health_path" {
-  description = "Health path of the API target group. /api/health/ready (database and Redis) takes an unready task out of the load balancer, but ECS also replaces tasks the load balancer reports unhealthy, so a database or Redis outage makes ECS restart every API task. /api/health/live avoids that."
+  description = "Health path of the API target group. /api/health/live (default) does not touch dependencies, so a database or Redis outage does not make ECS restart API tasks. /api/health/ready (database and Redis) takes an unready task out of the load balancer, but ECS also replaces tasks the load balancer reports unhealthy, so an outage makes ECS restart every API task."
   type        = string
-  default     = "/api/health/ready"
+  default     = "/api/health/live"
 
   validation {
     condition     = contains(["/api/health/ready", "/api/health/live"], var.api_health_path)

@@ -16,7 +16,7 @@ provider. They differ only in the variable defaults in their `variables.tf` and 
 | `redis`                         | `cache.t4g.micro`, no replica, no snapshots | same as dev                                                                                                                                                                | `cache.t4g.small`, 1 replica, 7 d snapshots |
 | `deletion_protection`           | `false`                                     | `false`                                                                                                                                                                    | `true`                                      |
 | `final_snapshot_on_destroy`     | bool                                        | Take a final database snapshot on destroy; independent of `deletion_protection`. `false` in dev and stage, `true` in prod                                                  |
-| `api_health_path`               | string                                      | API target group health path: `/api/health/ready` (default) or `/api/health/live`. See the caveat in the [architecture overview](../architecture/overview.md#request-flow) |
+| `api_health_path`               | string                                      | API target group health path: `/api/health/live` (default) or `/api/health/ready`. See the caveat in the [architecture overview](../architecture/overview.md#request-flow) |
 | `log_retention_days`            | 14                                          | 30                                                                                                                                                                         | 90                                          |
 
 ## Variables
