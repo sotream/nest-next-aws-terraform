@@ -1,0 +1,13 @@
+title = "nest-next-aws-terraform gitleaks config"
+
+[extend]
+useDefault = true
+
+# Offline tests use made-up values (a mock-provider password, a fake ECR image in a shell stub).
+# Nothing else is allowlisted: real files are still scanned in full.
+[[allowlists]]
+description = "Fake values in offline test fixtures"
+paths = [
+  '''modules/rds-postgres/tests/rds\.tftest\.hcl''',
+  '''scripts/tests/test-current-image-tag\.sh''',
+]
