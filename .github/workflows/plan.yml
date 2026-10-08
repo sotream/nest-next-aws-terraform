@@ -37,8 +37,10 @@ jobs:
         if: vars.AWS_PLAN_ROLE_ARN == '' || vars.TF_STATE_BUCKET == ''
         run: echo "::notice::AWS_PLAN_ROLE_ARN or TF_STATE_BUCKET is not set (fork or unconfigured repository); skipping plan."
 
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         if: vars.AWS_PLAN_ROLE_ARN != '' && vars.TF_STATE_BUCKET != ''
+        with:
+          persist-credentials: false
 
       - uses: ./.github/actions/terraform-init
         if: vars.AWS_PLAN_ROLE_ARN != '' && vars.TF_STATE_BUCKET != ''
@@ -52,10 +54,12 @@ jobs:
         id: plan
         if: vars.AWS_PLAN_ROLE_ARN != '' && vars.TF_STATE_BUCKET != ''
         working-directory: envs/${{ matrix.env }}
+        env:
+          ENV_NAME: ${{ matrix.env }}
         run: |
           set -uo pipefail
           # Plan against what runs now: keep the image tag ECS reports, not a Terraform output.
-          CURRENT=$("$GITHUB_WORKSPACE/scripts/current-image-tag.sh" "nnat-${{ matrix.env }}" "nnat-${{ matrix.env }}-api")
+          CURRENT=$("$GITHUB_WORKSPACE/scripts/current-image-tag.sh" "nnat-$ENV_NAME" "nnat-$ENV_NAME-api")
           export TF_VAR_services_image_tag="$CURRENT" TF_VAR_migrate_image_tag="$CURRENT"
           # -refresh=false: refreshing the secret versions calls secretsmanager:GetSecretValue (and kms:Decrypt),
           # which the plan role is denied on purpose, because any pull request runs this workflow with it.
@@ -67,7 +71,7 @@ jobs:
 
       - name: Comment the plan summary
         if: always() && steps.plan.outcome != 'skipped'
-        uses: actions/github-script@v9
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9
         env:
           TF_ENV: ${{ matrix.env }}
           PLAN_OUTCOME: ${{ steps.plan.outcome }}

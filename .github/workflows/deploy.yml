@@ -50,7 +50,9 @@ jobs:
             exit 1
           fi
 
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
 
       - uses: ./.github/actions/terraform-init
         with:
@@ -71,13 +73,14 @@ jobs:
             -var "services_image_tag=$CURRENT" -var "migrate_image_tag=$CURRENT" -var "starter_ref=$STARTER_REF"
 
       # 2. Build from the pinned starter commit and push. Tags are immutable, so an existing tag is reused.
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
+          persist-credentials: false
           repository: sotream/nest-next-starter
           ref: ${{ inputs.starter_ref }}
           path: starter
 
-      - uses: aws-actions/amazon-ecr-login@v2
+      - uses: aws-actions/amazon-ecr-login@03f1aad4c6c7ffd436567f42f9384779290529bd # v2
 
       - name: Build and push images
         working-directory: envs/${{ inputs.environment }}

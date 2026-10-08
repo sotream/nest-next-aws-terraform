@@ -16,17 +16,22 @@ inputs:
 runs:
   using: composite
   steps:
-    - uses: hashicorp/setup-terraform@v4
+    - uses: hashicorp/setup-terraform@dfe3c3f87815947d99a8997f908cb6525fc44e9e # v4
       with:
         terraform_version: 1.15.6
         terraform_wrapper: false
-    - uses: aws-actions/configure-aws-credentials@v6
+    - uses: aws-actions/configure-aws-credentials@e1253824e5c10ff9df46874f81ed3ec929e19cfd # v6
       with:
         role-to-assume: ${{ inputs.role-to-assume }}
         aws-region: ${{ inputs.region }}
     - shell: bash
-      working-directory: envs/${{ inputs.environment }}
+      env:
+        ENVIRONMENT: ${{ inputs.environment }}
+        STATE_BUCKET: ${{ inputs.state-bucket }}
+        STATE_REGION: ${{ inputs.region }}
       run: |
+        case "$ENVIRONMENT" in dev|stage|prod) ;; *) echo "::error::environment must be dev, stage or prod"; exit 1;; esac
+        cd "envs/$ENVIRONMENT"
         terraform init -input=false \
-          -backend-config="bucket=${{ inputs.state-bucket }}" \
-          -backend-config="region=${{ inputs.region }}"
+          -backend-config="bucket=$STATE_BUCKET" \
+          -backend-config="region=$STATE_REGION"
