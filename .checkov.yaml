@@ -1,0 +1,10 @@
+framework:
+  - terraform
+directory:
+  - bootstrap
+  - modules
+  - envs
+download-external-modules: false
+quiet: true
+compact: true
+# Skips live inline next to the resource as `#checkov:skip=ID:reason`; none are listed here on purpose.

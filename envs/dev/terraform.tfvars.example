@@ -1,0 +1,12 @@
+# Copy to terraform.tfvars (git-ignored) and fill in. Nothing here is a real value.
+region = "eu-central-1"
+
+# Optional in dev. Leave empty to serve plain HTTP on the load balancer DNS name (APP_ENV=dev).
+domain_name    = "dev.example.com"
+hosted_zone_id = "Z0000000000000000000"
+
+alarm_email = "ops@example.com"
+
+# Set by the deploy workflow; leave empty for the first plan.
+services_image_tag = ""
+migrate_image_tag  = ""

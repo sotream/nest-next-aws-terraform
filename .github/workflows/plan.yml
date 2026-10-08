@@ -1,0 +1,101 @@
+name: Plan
+
+on:
+  pull_request:
+
+concurrency:
+  group: plan-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  id-token: write
+  contents: read
+  pull-requests: write
+
+jobs:
+  plan:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { env: dev, suffix: DEV }
+          - { env: stage, suffix: STAGE }
+          - { env: prod, suffix: PROD }
+    env:
+      TF_IN_AUTOMATION: 'true'
+      TF_VAR_region: ${{ vars.AWS_REGION || 'eu-central-1' }}
+      TF_VAR_domain_name: ${{ vars[format('DOMAIN_NAME_{0}', matrix.suffix)] }}
+      TF_VAR_hosted_zone_id: ${{ vars[format('HOSTED_ZONE_ID_{0}', matrix.suffix)] }}
+      TF_VAR_alarm_email: ${{ vars[format('ALARM_EMAIL_{0}', matrix.suffix)] }}
+      TF_VAR_credentials_version: ${{ vars.CREDENTIALS_VERSION || 1 }}
+      TF_VAR_jwt_version: ${{ vars.JWT_VERSION || 1 }}
+      TF_VAR_permissions_boundary_arn: ${{ vars.PERMISSIONS_BOUNDARY_ARN }}
+    steps:
+      # Pull requests from forks get no variables and no OIDC token: say so instead of failing.
+      - name: Skip when AWS is not configured
+        if: vars.AWS_PLAN_ROLE_ARN == '' || vars.TF_STATE_BUCKET == ''
+        run: echo "::notice::AWS_PLAN_ROLE_ARN or TF_STATE_BUCKET is not set (fork or unconfigured repository); skipping plan."
+
+      - uses: actions/checkout@v7
+        if: vars.AWS_PLAN_ROLE_ARN != '' && vars.TF_STATE_BUCKET != ''
+
+      - uses: ./.github/actions/terraform-init
+        if: vars.AWS_PLAN_ROLE_ARN != '' && vars.TF_STATE_BUCKET != ''
+        with:
+          environment: ${{ matrix.env }}
+          role-to-assume: ${{ vars.AWS_PLAN_ROLE_ARN }}
+          region: ${{ vars.AWS_REGION || 'eu-central-1' }}
+          state-bucket: ${{ vars.TF_STATE_BUCKET }}
+
+      - name: Plan
+        id: plan
+        if: vars.AWS_PLAN_ROLE_ARN != '' && vars.TF_STATE_BUCKET != ''
+        working-directory: envs/${{ matrix.env }}
+        run: |
+          set -uo pipefail
+          # Plan against what runs now: keep the image tag ECS reports, not a Terraform output.
+          CURRENT=$("$GITHUB_WORKSPACE/scripts/current-image-tag.sh" "nnat-${{ matrix.env }}" "nnat-${{ matrix.env }}-api")
+          export TF_VAR_services_image_tag="$CURRENT" TF_VAR_migrate_image_tag="$CURRENT"
+          # -refresh=false: refreshing the secret versions calls secretsmanager:GetSecretValue (and kms:Decrypt),
+          # which the plan role is denied on purpose, because any pull request runs this workflow with it.
+          # The plan therefore shows configuration changes, not drift.
+          terraform plan -input=false -no-color -lock-timeout=60s -refresh=false -out=plan.bin > plan.log 2>&1
+          code=$?
+          terraform show -no-color plan.bin > plan.txt 2>/dev/null || cp plan.log plan.txt
+          exit $code
+
+      - name: Comment the plan summary
+        if: always() && steps.plan.outcome != 'skipped'
+        uses: actions/github-script@v9
+        env:
+          TF_ENV: ${{ matrix.env }}
+          PLAN_OUTCOME: ${{ steps.plan.outcome }}
+        with:
+          script: |
+            const fs = require('fs');
+            const dir = `envs/${process.env.TF_ENV}`;
+            const read = (f) => (fs.existsSync(`${dir}/${f}`) ? fs.readFileSync(`${dir}/${f}`, 'utf8') : '');
+            const text = read('plan.txt') || read('plan.log');
+            const summary = (text.match(/^(Plan:.*|No changes\..*)$/m) || ['no summary line'])[0];
+            const body = [
+              `<!-- plan-${process.env.TF_ENV} -->`,
+              `### Terraform plan: \`${process.env.TF_ENV}\` (${process.env.PLAN_OUTCOME})`,
+              `**${summary}**`,
+              '<details><summary>Full plan</summary>',
+              '',
+              '```',
+              text.slice(0, 60000),
+              '```',
+              '</details>',
+            ].join('\n');
+            const { owner, repo } = context.repo;
+            const issue_number = context.issue.number;
+            const marker = `<!-- plan-${process.env.TF_ENV} -->`;
+            const comments = await github.paginate(github.rest.issues.listComments, { owner, repo, issue_number });
+            const existing = comments.find((c) => c.body && c.body.startsWith(marker));
+            if (existing) {
+              await github.rest.issues.updateComment({ owner, repo, comment_id: existing.id, body });
+            } else {
+              await github.rest.issues.createComment({ owner, repo, issue_number, body });
+            }

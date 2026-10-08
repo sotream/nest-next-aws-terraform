@@ -1,0 +1,66 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  terraform:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: hashicorp/setup-terraform@v4
+        with:
+          terraform_version: 1.15.6
+      - uses: terraform-linters/setup-tflint@v6
+        with:
+          tflint_version: v0.61.0
+      - run: ./scripts/tests/test-current-image-tag.sh
+      - run: ./scripts/check.sh
+        env:
+          # Lets `tflint --init` download the AWS ruleset without anonymous rate limits.
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  docs:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - name: Install terraform-docs
+        run: |
+          curl -sSL https://github.com/terraform-docs/terraform-docs/releases/download/v0.24.0/terraform-docs-v0.24.0-linux-amd64.tar.gz | tar -xz terraform-docs
+          sudo mv terraform-docs /usr/local/bin/
+      # Fails when a module README is out of date: run ./scripts/docs.sh and commit the result.
+      - run: ./scripts/docs.sh --check
+
+  format:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+      - run: npx --yes prettier@3.9.9 --check "**/*.md" "**/*.yml" "**/*.yaml" "**/*.json"
+
+  checkov:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: bridgecrewio/checkov-action@v12
+        with:
+          config_file: .checkov.yaml
+
+  secrets:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      # Scans every commit on every branch, not only the working tree.
+      - run: docker run --rm -v "$PWD:/repo" zricethezav/gitleaks:latest git /repo --log-opts="--all" --redact

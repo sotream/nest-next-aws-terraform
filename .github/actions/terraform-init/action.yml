@@ -1,0 +1,32 @@
+name: terraform-init
+description: Install Terraform, assume an AWS role through GitHub OIDC and initialise one environment root.
+inputs:
+  environment:
+    description: dev, stage or prod
+    required: true
+  role-to-assume:
+    description: ARN of the role to assume
+    required: true
+  region:
+    description: AWS region of the state bucket and the stack
+    required: true
+  state-bucket:
+    description: Name of the Terraform state bucket
+    required: true
+runs:
+  using: composite
+  steps:
+    - uses: hashicorp/setup-terraform@v4
+      with:
+        terraform_version: 1.15.6
+        terraform_wrapper: false
+    - uses: aws-actions/configure-aws-credentials@v6
+      with:
+        role-to-assume: ${{ inputs.role-to-assume }}
+        aws-region: ${{ inputs.region }}
+    - shell: bash
+      working-directory: envs/${{ inputs.environment }}
+      run: |
+        terraform init -input=false \
+          -backend-config="bucket=${{ inputs.state-bucket }}" \
+          -backend-config="region=${{ inputs.region }}"

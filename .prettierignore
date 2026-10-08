@@ -1,0 +1,8 @@
+.terraform
+.superpowers
+docs/superpowers
+docs/private
+docs/notes
+# Generated tables between the terraform-docs markers must match its output, not Prettier's.
+modules/*/README.md
+bootstrap/README.md
