@@ -60,7 +60,7 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           persist-credentials: false
-      - uses: bridgecrewio/checkov-action@3f0caf0c3aa9f56ade6b49f6e60b63aaeafb75a3 # v12
+      - uses: bridgecrewio/checkov-action@83b08f51b20950f791f5caadcc92e336b371eb12 # v12
         with:
           config_file: .checkov.yaml
 
